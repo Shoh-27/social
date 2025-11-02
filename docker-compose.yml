@@ -130,3 +130,27 @@ services:
       - postgres
     networks:
       - laravel_network
+  # ========================================
+  # MongoDB (Chat Messages)
+  # ========================================
+  mongo:
+    image: mongo:7-jammy
+    container_name: laravel_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo_root
+      MONGO_INITDB_ROOT_PASSWORD: mongo_secure_password
+      MONGO_INITDB_DATABASE: laravel_chat
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+    networks:
+      - laravel_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
