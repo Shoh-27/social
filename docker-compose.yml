@@ -20,3 +20,25 @@ services:
       - websockets
     networks:
       - laravel_network
+  # ========================================
+  # Laravel PHP-FPM Application
+  # ========================================
+  app:
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+    container_name: laravel_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    environment:
+      - APP_ENV=local
+      - CONTAINER_ROLE=app
+    depends_on:
+      - postgres
+      - mongo
+      - redis
+    networks:
+      - laravel_network
