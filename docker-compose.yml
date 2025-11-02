@@ -42,3 +42,25 @@ services:
       - redis
     networks:
       - laravel_network
+  # ========================================
+  # Laravel Queue Worker
+  # ========================================
+  queue:
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+    container_name: laravel_queue
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    environment:
+      - APP_ENV=local
+      - CONTAINER_ROLE=queue
+    depends_on:
+      - app
+      - redis
+    command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
+    networks:
+      - laravel_network
