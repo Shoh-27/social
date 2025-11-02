@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  # ========================================
+  # NGINX Reverse Proxy
+  # ========================================
+  nginx:
+    image: nginx:alpine
+    container_name: laravel_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./docker/nginx/logs:/var/log/nginx
+    depends_on:
+      - app
+      - websockets
+    networks:
+      - laravel_network
