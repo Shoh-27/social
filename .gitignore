@@ -14,7 +14,6 @@
 
 # Laravel environment
 /src/.env
-/.env
 
 # composer & npm lock files (ixtiyoriy)
 composer.lock
