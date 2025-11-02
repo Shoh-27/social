@@ -1,0 +1,214 @@
+version: '3.8'
+
+services:
+  # ========================================
+  # NGINX Reverse Proxy
+  # ========================================
+  nginx:
+    image: nginx:alpine
+    container_name: laravel_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./docker/nginx/logs:/var/log/nginx
+    depends_on:
+      - app
+      - websockets
+    networks:
+      - laravel_network
+  # ========================================
+  # Laravel PHP-FPM Application
+  # ========================================
+  app:
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+    container_name: laravel_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    environment:
+      - APP_ENV=local
+      - CONTAINER_ROLE=app
+    depends_on:
+      - postgres
+      - mongo
+      - redis
+    networks:
+      - laravel_network
+  # ========================================
+  # Laravel Queue Worker
+  # ========================================
+  queue:
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+    container_name: laravel_queue
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    environment:
+      - APP_ENV=local
+      - CONTAINER_ROLE=queue
+    depends_on:
+      - app
+      - redis
+    command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
+    networks:
+      - laravel_network
+  # ========================================
+  # Laravel WebSockets Server
+  # ========================================
+  websockets:
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+    container_name: laravel_websockets
+    restart: unless-stopped
+    working_dir: /var/www/html
+    ports:
+      - "6001:6001"
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    environment:
+      - APP_ENV=local
+      - CONTAINER_ROLE=websockets
+    depends_on:
+      - app
+      - redis
+    command: php artisan websockets:serve --host=0.0.0.0 --port=6001
+    networks:
+      - laravel_network
+  # ========================================
+  # PostgreSQL Database (Auth + Posts)
+  # ========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: laravel_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: laravel_db
+      POSTGRES_USER: laravel_user
+      POSTGRES_PASSWORD: laravel_secure_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - laravel_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U laravel_user -d laravel_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  # ========================================
+  # pgAdmin (PostgreSQL Admin GUI)
+  # ========================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: laravel_pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@laravel.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - laravel_network
+  # ========================================
+  # MongoDB (Chat Messages)
+  # ========================================
+  mongo:
+    image: mongo:7-jammy
+    container_name: laravel_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo_root
+      MONGO_INITDB_ROOT_PASSWORD: mongo_secure_password
+      MONGO_INITDB_DATABASE: laravel_chat
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+    networks:
+      - laravel_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  # ========================================
+  # Mongo Express (MongoDB Admin GUI)
+  # ========================================
+  mongo-express:
+    image: mongo-express:latest
+    container_name: laravel_mongo_express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: mongo_root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: mongo_secure_password
+      ME_CONFIG_MONGODB_URL: mongodb://mongo_root:mongo_secure_password@mongo:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    depends_on:
+      - mongo
+    networks:
+      - laravel_network
+  # ========================================
+  # Redis (Cache + Queue + Broadcasting)
+  # ========================================
+  redis:
+    image: redis:7-alpine
+    container_name: laravel_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass redis_secure_password
+    volumes:
+      - redis_data:/data
+    networks:
+      - laravel_network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+# ========================================
+# Networks
+# ========================================
+networks:
+  laravel_network:
+    driver: bridge
+
+# ========================================
+# Volumes
+# ========================================
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  mongo_data:
+    driver: local
+  mongo_config:
+    driver: local
+  redis_data:
+    driver: local
