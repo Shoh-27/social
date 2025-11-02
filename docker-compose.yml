@@ -64,3 +64,27 @@ services:
     command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
     networks:
       - laravel_network
+  # ========================================
+  # Laravel WebSockets Server
+  # ========================================
+  websockets:
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+    container_name: laravel_websockets
+    restart: unless-stopped
+    working_dir: /var/www/html
+    ports:
+      - "6001:6001"
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    environment:
+      - APP_ENV=local
+      - CONTAINER_ROLE=websockets
+    depends_on:
+      - app
+      - redis
+    command: php artisan websockets:serve --host=0.0.0.0 --port=6001
+    networks:
+      - laravel_network
