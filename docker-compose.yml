@@ -88,3 +88,26 @@ services:
     command: php artisan websockets:serve --host=0.0.0.0 --port=6001
     networks:
       - laravel_network
+  # ========================================
+  # PostgreSQL Database (Auth + Posts)
+  # ========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: laravel_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: laravel_db
+      POSTGRES_USER: laravel_user
+      POSTGRES_PASSWORD: laravel_secure_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - laravel_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U laravel_user -d laravel_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
