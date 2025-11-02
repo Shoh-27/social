@@ -1,0 +1,49 @@
+# ======================
+# Laravel
+# ======================
+/src/vendor/
+/src/node_modules/
+/src/storage/*.key
+/src/storage/app/private/
+/src/storage/framework/cache/data/
+/src/storage/framework/sessions/
+/src/storage/framework/testing/
+/src/storage/framework/views/
+/src/storage/logs/*.log
+/src/public/storage
+
+# Laravel environment
+/src/.env
+/.env
+
+# composer & npm lock files (ixtiyoriy)
+composer.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# phpstorm / idea
+.idea/
+.vscode/
+
+# system files
+.DS_Store
+Thumbs.db
+
+# ======================
+# Docker
+# ======================
+/docker/nginx/logs/
+/docker/mysql/data/
+/docker/postgres/data/
+/docker/mongo/data/
+/docker/redis/data/
+*.pid
+
+# docker build caches
+**/docker/php-fpm/.phpunit.result.cache
+
+# ======================
+# misc
+# ======================
+/tmp
